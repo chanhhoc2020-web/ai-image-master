@@ -1,0 +1,7 @@
+{
+  "name": "Nguyễn Học_AI Image Master",
+  "description": "Một ứng dụng xử lý ảnh AI chuyên nghiệp hỗ trợ đổi màu vật thể, xóa nền và tạo ảnh thẻ tự động sử dụng Gemini AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
