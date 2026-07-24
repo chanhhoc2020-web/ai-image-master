@@ -21,7 +21,6 @@ import ImageResizerTool from './components/ImageResizerTool';
 import TextToImageTool from './components/TextToImageTool';
 import BeforeAfterTool from './components/BeforeAfterTool';
 import ComponentGenerationTool from './components/ComponentGenerationTool';
-import ApiKeyModal from './components/ApiKeyModal';
 
 const App: React.FC = () => {
   const [activeTool, setActiveTool] = useState<ToolType>(ToolType.ID_PHOTO);
@@ -34,11 +33,6 @@ const App: React.FC = () => {
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
-  });
-
-  // API Key State
-  const [hasApiKey, setHasApiKey] = useState<boolean>(() => {
-      return !!localStorage.getItem('hf_api_key');
   });
 
   // Derived translation object
@@ -56,16 +50,6 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
-
-  const handleSaveApiKey = (key: string) => {
-      localStorage.setItem('hf_api_key', key);
-      setHasApiKey(true);
-  };
-
-  const handleResetApiKey = () => {
-      localStorage.removeItem('hf_api_key');
-      setHasApiKey(false);
-  };
 
   const renderTool = () => {
     switch (activeTool) {
@@ -112,7 +96,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-300">
-      {!hasApiKey && <ApiKeyModal onSave={handleSaveApiKey} />}
       
       <Header 
         isDarkMode={isDarkMode} 
@@ -120,7 +103,6 @@ const App: React.FC = () => {
         language={language}
         setLanguage={setLanguage}
         t={t}
-        onResetApiKey={handleResetApiKey}
       />
       
       <main className="flex-grow container mx-auto px-4 py-8 max-w-[1400px]">
