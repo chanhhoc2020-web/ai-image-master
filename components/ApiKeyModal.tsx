@@ -47,6 +47,15 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave }) => {
             </p>
           </div>
 
+          <div className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 p-4 rounded-xl border border-amber-200 dark:border-amber-800/50">
+            <p className="flex gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <span>
+                <strong>Quan trọng:</strong> Vui lòng <strong>TẮT tiện ích chặn quảng cáo</strong> (Adblock, Brave Shields, VPN) trên trang web này để không bị lỗi "Failed to Fetch" khi gọi API xử lý ảnh.
+              </span>
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="apiKey" className="block text-sm font-bold text-slate-700 dark:text-slate-300">

@@ -83,6 +83,9 @@ export async function processImage(
       });
   } catch (error: any) {
       console.error("Hugging Face API Error:", error);
+      if (error.message === 'Failed to fetch' || error.message === 'NetworkError when attempting to fetch resource.') {
+          throw new Error('Lỗi Mạng (Failed to fetch): Vui lòng TẮT tiện ích chặn quảng cáo (Adblock, Brave Shields) và thử lại. Trình duyệt của bạn đang chặn kết nối đến AI!');
+      }
       throw error;
   }
 }
