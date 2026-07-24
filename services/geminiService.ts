@@ -58,8 +58,7 @@ export async function processImage(
       headers['Content-Type'] = details.mimeType;
       // We pass the prompt via a custom header or if HF doesn't support it well, 
       // the free API might ignore the prompt and just run a generic pass.
-      // But we try to pass it in X-Wait-For-Model to avoid cold start issues if possible
-      headers['X-Wait-For-Model'] = 'true';
+      // Removed X-Wait-For-Model to avoid CORS preflight errors in browser
   }
 
   try {
