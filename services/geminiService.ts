@@ -1,8 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { ToolType } from "../types";
 
-const IMAGE_MODEL_ID = 'gemini-2.5-flash-image';
-const TEXT_MODEL_ID = 'gemini-3-flash-preview';
+const IMAGE_MODEL_ID = 'gemini-1.5-flash';
+const TEXT_MODEL_ID = 'gemini-1.5-flash';
 
 const getGenAI = () => {
   const apiKey = process.env.API_KEY || localStorage.getItem('gemini_api_key') || '';
