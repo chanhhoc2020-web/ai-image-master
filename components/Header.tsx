@@ -9,9 +9,10 @@ interface HeaderProps {
     language: Language;
     setLanguage: (lang: Language) => void;
     t: any;
+    onResetApiKey?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ isDarkMode, toggleTheme, language, setLanguage, t }) => {
+const Header: React.FC<HeaderProps> = ({ isDarkMode, toggleTheme, language, setLanguage, t, onResetApiKey }) => {
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 shadow-sm transition-colors duration-300">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -27,7 +28,16 @@ const Header: React.FC<HeaderProps> = ({ isDarkMode, toggleTheme, language, setL
         
         <div className="flex items-center gap-2 sm:gap-4">
             
-
+            {/* API Key Reset (Desktop) */}
+            {onResetApiKey && (
+              <button 
+                onClick={onResetApiKey}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors border border-amber-200 dark:border-amber-800"
+                title="Đổi API Key"
+              >
+                <Key size={14} /> API Key
+              </button>
+            )}
 
             {/* Language Switcher */}
             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
@@ -60,7 +70,16 @@ const Header: React.FC<HeaderProps> = ({ isDarkMode, toggleTheme, language, setL
                 )}
             </button>
 
-
+            {/* Key Icon for Mobile (Compact) */}
+            {onResetApiKey && (
+              <button 
+                onClick={onResetApiKey}
+                className="sm:hidden p-2 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                title="Đổi API Key"
+              >
+                <Key size={20} />
+              </button>
+            )}
         </div>
       </div>
     </header>
