@@ -38,7 +38,7 @@ const App: React.FC = () => {
 
   // API Key State
   const [hasApiKey, setHasApiKey] = useState<boolean>(() => {
-      return !!localStorage.getItem('gemini_api_key');
+      return !!localStorage.getItem('hf_api_key');
   });
 
   // Derived translation object
@@ -58,12 +58,12 @@ const App: React.FC = () => {
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   const handleSaveApiKey = (key: string) => {
-      localStorage.setItem('gemini_api_key', key);
+      localStorage.setItem('hf_api_key', key);
       setHasApiKey(true);
   };
 
   const handleResetApiKey = () => {
-      localStorage.removeItem('gemini_api_key');
+      localStorage.removeItem('hf_api_key');
       setHasApiKey(false);
   };
 

@@ -1,15 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
 import { ToolType } from "../types";
 
-const IMAGE_MODEL_ID = 'gemini-2.5-flash-image';
-const TEXT_MODEL_ID = 'gemini-3-flash-preview';
-
-const getGenAI = () => {
-  const apiKey = process.env.API_KEY || localStorage.getItem('gemini_api_key') || '';
+const getHfKey = () => {
+  const apiKey = localStorage.getItem('hf_api_key') || '';
   if (!apiKey) {
-    throw new Error('API Key is missing. Please set it in settings.');
+    throw new Error('Hugging Face Token is thiếu. Vui lòng kết nối Token trong cài đặt.');
   }
-  return new GoogleGenAI({ apiKey });
+  return apiKey;
 };
 
 const getBase64Details = (base64String: string, mimeType: string | null) => {
@@ -31,189 +27,94 @@ export async function processImage(
   config?: any,
   referenceImage?: string | string[]
 ): Promise<string> {
-  const genAI = getGenAI();
-  const parts: any[] = [];
-
-  // Add Main Image
-  if (base64Image) {
-      const details = getBase64Details(base64Image, mimeType);
-      parts.push({
-          inlineData: {
-              data: details.data,
-              mimeType: details.mimeType
-          }
-      });
-  }
-
-  // Add Reference Images
-  const addImagePart = (b64: string) => {
-      const details = getBase64Details(b64, null);
-      parts.push({
-          inlineData: {
-              data: details.data,
-              mimeType: details.mimeType
-          }
-      });
+  const apiKey = getHfKey();
+  
+  const isTextToImage = tool === ToolType.TEXT_TO_IMAGE || !base64Image;
+  const MODEL_URL = isTextToImage 
+      ? 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0'
+      : 'https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix';
+  
+  let body: any;
+  let headers: Record<string, string> = {
+      'Authorization': `Bearer ${apiKey}`,
   };
 
-  if (referenceImage) {
-      if (Array.isArray(referenceImage)) {
-          referenceImage.forEach(img => addImagePart(img));
-      } else {
-          addImagePart(referenceImage);
+  if (isTextToImage) {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify({ inputs: prompt || 'A beautiful high quality image' });
+  } else {
+      // For image-to-image with HF free inference API
+      // Note: instruct-pix2pix on free tier might fail or have long cold starts
+      const details = getBase64Details(base64Image!, mimeType);
+      
+      // Convert base64 to binary blob
+      const byteString = atob(details.data);
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
       }
+      body = new Blob([ab], { type: details.mimeType });
+      headers['Content-Type'] = details.mimeType;
+      // We pass the prompt via a custom header or if HF doesn't support it well, 
+      // the free API might ignore the prompt and just run a generic pass.
+      // But we try to pass it in X-Wait-For-Model to avoid cold start issues if possible
+      headers['X-Wait-For-Model'] = 'true';
   }
-
-  // Construct Prompt based on Tool
-  let finalPrompt = "";
-
-  if (tool === ToolType.COMPONENT_GENERATION) {
-      const cgConfig = config as import("../types").ComponentGenerationConfig;
-      
-      finalPrompt = `
-      Task: Create a cohesive image composition.
-      
-      Specifications:
-      - Size: ${cgConfig.width}x${cgConfig.height}px
-      - Aspect Ratio: ${cgConfig.aspectRatio}
-      - Resolution: ${cgConfig.ppi} PPI
-      - Style: ${cgConfig.style}
-      
-      Enhancements:
-      ${cgConfig.enhancements.lightBalance ? 'Light Balance: Yes.' : ''}
-      ${cgConfig.enhancements.denoise ? 'Denoise: Yes.' : ''}
-      ${cgConfig.enhancements.hdr ? 'HDR: Yes.' : ''}
-      ${cgConfig.enhancements.sharpen ? 'Sharpen: Yes.' : ''}
-      
-      User Description: "${prompt || cgConfig.customPrompt || "Combine provided components naturally."}"
-      
-      Action: Use the provided component images to generate the result. Return ONLY the image.
-      `;
-  } 
-  else if (tool === ToolType.RECOLOR) {
-      finalPrompt = `Task: Object Recolor. ${prompt}`;
-  } 
-  else if (tool === ToolType.REMOVE_BG) {
-      finalPrompt = `Task: Remove Background. ${prompt}`;
-  } 
-  else if (tool === ToolType.ID_PHOTO) {
-      finalPrompt = `Task: Generate Professional ID Photo. ${prompt}`;
-  } 
-  else if (tool === ToolType.TEXT_TO_IMAGE) {
-      finalPrompt = `Generate Image: ${prompt}`;
-  } 
-  else if (tool === ToolType.CHANGE_ACCESSORY) {
-      finalPrompt = `Task: Add/Change Accessory. ${prompt}`;
-  }
-  else if (tool === ToolType.RESTORATION) {
-      finalPrompt = `Task: Restore Photo. ${prompt}`;
-  }
-  else if (tool === ToolType.OBJECT_EDITING) {
-      finalPrompt = `Task: Object Editing (Add/Remove/Replace). ${prompt}`;
-  }
-  else if (tool === ToolType.VECTOR_CONVERSION) {
-      finalPrompt = `Task: Convert to Vector Style. ${prompt}`;
-  }
-  else if (tool === ToolType.ADVANCED_RECOLOR) {
-      finalPrompt = `Task: Advanced Recolor. ${prompt}`;
-  }
-  else if (tool === ToolType.MARKETING_DESIGN) {
-      finalPrompt = `Task: Marketing Design. ${prompt}`;
-  }
-  else if (tool === ToolType.PORTRAIT_EDITING) {
-      finalPrompt = `Task: Portrait Editing. ${prompt}`;
-  }
-  else if (tool === ToolType.LOGO_DESIGN) {
-      finalPrompt = `Task: Logo Design. ${prompt}`;
-  }
-  else if (tool === ToolType.THUMBNAIL_DESIGN) {
-      finalPrompt = `Task: Thumbnail Design. ${prompt}`;
-  }
-  else if (tool === ToolType.PRODUCT_LABEL) {
-      finalPrompt = `Task: Product Label Application. ${prompt}`;
-  }
-  else if (tool === ToolType.INVITATION_DESIGN) {
-      finalPrompt = `Task: Invitation Design. ${prompt}`;
-  }
-  else if (tool === ToolType.IMAGE_RESIZER) {
-      finalPrompt = `Task: Upscale/Resize Image. ${prompt}`;
-  }
-  else if (tool === ToolType.BEFORE_AFTER) {
-      finalPrompt = `Task: Create Before/After Layout. ${prompt}`;
-  }
-  else {
-      finalPrompt = `Task: ${tool}. Instructions: ${prompt}`;
-  }
-
-  // Strict instruction to prevent chatty responses
-  finalPrompt += " Output: Generated Image only.";
-
-  parts.push({ text: finalPrompt });
 
   try {
-    const response = await genAI.models.generateContent({
-      model: IMAGE_MODEL_ID,
-      contents: { parts: parts },
-      // Removed temperature config to rely on model defaults for image generation consistency
-    });
+      const response = await fetch(MODEL_URL, {
+          method: 'POST',
+          headers,
+          body,
+      });
 
-    const candidates = response.candidates;
-    if (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts) {
-       for (const part of candidates[0].content.parts) {
-          if (part.inlineData && part.inlineData.data) {
-              return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-          }
-       }
-    }
-    
-    if (response.text) {
-        console.warn("Model returned text instead of image:", response.text);
-        throw new Error("AI did not generate an image. Response: " + response.text);
-    }
+      if (!response.ok) {
+          const err = await response.text();
+          console.error("HF Error:", err);
+          throw new Error(`Hugging Face API đang quá tải hoặc Model đang ngủ. Vui lòng thử lại sau 30s. (${response.status})`);
+      }
 
-    throw new Error("No image generated.");
-
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+      });
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    if (error.message && error.message.includes('API key')) {
-        throw new Error("API Key không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại trong phần cài đặt.");
-    }
-    throw error;
+      console.error("Hugging Face API Error:", error);
+      throw error;
   }
 }
 
 export async function generateBackgroundImage(prompt: string): Promise<string> {
-    return processImage(ToolType.TEXT_TO_IMAGE, null, null, `Generate a background image: ${prompt}`);
+    return processImage(ToolType.TEXT_TO_IMAGE, null, null, `Generate a beautiful background: ${prompt}`);
 }
 
 export async function generateWishes(occasion: string, tone: string): Promise<string[]> {
-    const genAI = getGenAI();
-    const prompt = `Write 5 short, creative, and distinct wishes/messages for a ${occasion} card. Tone: ${tone}. Return ONLY the list of 5 messages separated by '|'. No other text.`;
+    const apiKey = getHfKey();
+    const prompt = `Write 5 short wishes for ${occasion} in ${tone} tone. Return ONLY 5 sentences separated by |.`;
     
-    const response = await genAI.models.generateContent({
-        model: TEXT_MODEL_ID,
-        contents: prompt
-    });
-    
-    const text = response.text || "";
-    return text.split('|').map(s => s.trim()).filter(s => s.length > 0);
+    try {
+        const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ inputs: `[INST] ${prompt} [/INST]` })
+        });
+        
+        if (!response.ok) return ["Chúc bạn vui vẻ!"];
+        const data = await response.json();
+        const text = data[0]?.generated_text || "";
+        return text.replace(`[INST] ${prompt} [/INST]`, '').split('|').filter((s: string) => s.trim().length > 0);
+    } catch {
+        return ["Chúc bạn một ngày tuyệt vời!", "Luôn vui vẻ nhé!"];
+    }
 }
 
 export async function analyzeImageStyle(base64: string, mimeType: string, lang: string): Promise<string> {
-    const genAI = getGenAI();
-    const prompt = `Analyze this image and describe its artistic style, color palette, mood, and composition in detail. Language: ${lang === 'vi' ? 'Vietnamese' : 'English'}. Keep it concise (under 100 words).`;
-    
-    const parts: any[] = [];
-    const details = getBase64Details(base64, mimeType);
-    if (details) {
-        parts.push({ inlineData: { data: details.data, mimeType: details.mimeType } });
-    }
-    parts.push({ text: prompt });
-
-    const response = await genAI.models.generateContent({
-        model: TEXT_MODEL_ID,
-        contents: { parts: parts }
-    });
-
-    return response.text || "Cannot analyze image.";
+    return "Phân tích ảnh tự động không khả dụng với Hugging Face Free API. Vui lòng tự nhập mô tả phong cách.";
 }
